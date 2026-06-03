@@ -833,7 +833,7 @@ if st.session_state.logged_in:
         "Logout"
     ]
 )
-    
+
 
     # ==============================================
     # DASHBOARD
@@ -1273,9 +1273,10 @@ if st.session_state.logged_in:
         )
 
         st.rerun()
-      # ==============================================
-# MESSAGES
-# ==============================================
+
+    # ==============================================
+    # MESSAGES
+    # ==============================================
 
     elif user_menu == "Messages":
         st.title("💬 SafeWalk Chat")
@@ -1356,267 +1357,266 @@ if st.session_state.logged_in:
             st.warning(
                 "No Messages"
             )
-        
 
-    
 
-# ==============================================
-# SOS CENTER
-# ==============================================
 
-elif user_menu == "SOS Center":
+    # ==============================================
+    # SOS CENTER
+    # ==============================================
 
-    st.title("🚨 Emergency SOS")
+    elif user_menu == "SOS Center":
 
-    st.error(
-        "Use only during emergencies"
-    )
+        st.title("🚨 Emergency SOS")
 
-    location = st.text_input(
-        "Current Location"
-    )
-
-    threat_image = st.camera_input(
-        "Capture Threat Image"
-    )
-
-    if st.button(
-        "SEND SOS ALERT"
-    ):
-
-        image_path = ""
-
-        if threat_image:
-
-            filename = (
-                "SOS_"
-                +
-                str(
-                    int(
-                        datetime.datetime.now().timestamp()
-                    )
-                )
-                +
-                ".jpg"
-            )
-
-            image_path = save_image(
-                threat_image,
-                filename
-            )
-
-        cursor.execute("""
-        INSERT INTO sos_alerts(
-        user_email,
-        location,
-        image_path,
-        alert_time
+        st.error(
+            "Use only during emergencies"
         )
-        VALUES(?,?,?,?)
-        """,
-        (
-            st.session_state.user_email,
-            location,
-            image_path,
-            str(datetime.datetime.now())
-        ))
 
-        cursor.execute("""
-        SELECT member_name,
-        phone
-        FROM family
+        location = st.text_input(
+            "Current Location"
+        )
 
-        WHERE user_email=?
-        """,
-        (
-            st.session_state.user_email,
-        ))
+        threat_image = st.camera_input(
+            "Capture Threat Image"
+        )
 
-        family_members = cursor.fetchall()
+        if st.button(
+            "SEND SOS ALERT"
+        ):
 
-        for member in family_members:
+            image_path = ""
+
+            if threat_image:
+
+                filename = (
+                    "SOS_"
+                    +
+                    str(
+                        int(
+                            datetime.datetime.now().timestamp()
+                        )
+                    )
+                    +
+                    ".jpg"
+                )
+
+                image_path = save_image(
+                    threat_image,
+                    filename
+                )
 
             cursor.execute("""
-            INSERT INTO family_alerts(
+            INSERT INTO sos_alerts(
             user_email,
-            family_name,
-            family_phone,
-            alert_time,
-            status
+            location,
+            image_path,
+            alert_time
             )
-            VALUES(?,?,?,?,?)
+            VALUES(?,?,?,?)
             """,
             (
                 st.session_state.user_email,
-                member[0],
-                member[1],
-                str(datetime.datetime.now()),
-                "ALERT SENT"
+                location,
+                image_path,
+                str(datetime.datetime.now())
             ))
 
-        conn.commit()
+            cursor.execute("""
+            SELECT member_name,
+            phone
+            FROM family
+
+            WHERE user_email=?
+            """,
+            (
+                st.session_state.user_email,
+            ))
+
+            family_members = cursor.fetchall()
+
+            for member in family_members:
+
+                cursor.execute("""
+                INSERT INTO family_alerts(
+                user_email,
+                family_name,
+                family_phone,
+                alert_time,
+                status
+                )
+                VALUES(?,?,?,?,?)
+                """,
+                (
+                    st.session_state.user_email,
+                    member[0],
+                    member[1],
+                    str(datetime.datetime.now()),
+                    "ALERT SENT"
+                ))
+
+            conn.commit()
+
+            st.success(
+                "Emergency Alert Activated"
+            )
+
+            st.warning(
+                "Family Members Notified"
+            )
+
+    # ==============================================
+    # EMERGENCY HISTORY
+    # ==============================================
+
+    elif user_menu == "Emergency History":
+
+        st.title("📋 Emergency History")
+
+        cursor.execute("""
+        SELECT
+        location,
+        image_path,
+        alert_time
+
+        FROM sos_alerts
+
+        WHERE user_email=?
+
+        ORDER BY id DESC
+        """,
+        (
+            st.session_state.user_email,
+        ))
+
+        alerts = cursor.fetchall()
+
+        if alerts:
+
+            for alert in alerts:
+
+                st.write("---")
+
+                st.write(
+                    f"Location: {alert[0]}"
+                )
+
+                st.write(
+                    f"Time: {alert[2]}"
+                )
+
+                if alert[1]:
+
+                    try:
+
+                        st.image(
+                            alert[1],
+                            width=300
+                        )
+
+                    except:
+                        pass
+
+        else:
+
+            st.info(
+                "No Alerts Found"
+            )
+
+    # ==============================================
+    # FAMILY ALERT STATUS
+    # ==============================================
+
+    elif user_menu == "Family Alerts":
+
+        st.title("👨‍👩‍👧 Family Alert Records")
+
+        cursor.execute("""
+        SELECT
+        family_name,
+        family_phone,
+        alert_time,
+        status
+
+        FROM family_alerts
+
+        WHERE user_email=?
+
+        ORDER BY id DESC
+        """,
+        (
+            st.session_state.user_email,
+        ))
+
+        alerts = cursor.fetchall()
+
+        if alerts:
+
+            df = pd.DataFrame(
+                alerts,
+                columns=[
+                    "Family Member",
+                    "Phone",
+                    "Time",
+                    "Status"
+                ]
+            )
+
+            st.dataframe(df)
+
+        else:
+
+            st.info(
+                "No Alerts Found"
+            )
+
+    # ==============================================
+    # NEARBY HELP
+    # ==============================================
+
+    elif user_menu == "Nearby Help":
+
+        st.title("🏥 Nearby Help Centers")
 
         st.success(
-            "Emergency Alert Activated"
+            "Emergency Support Directory"
         )
 
-        st.warning(
-            "Family Members Notified"
-        )
+        help_data = [
+            [
+                "Police Station",
+                "100"
+            ],
+            [
+                "Women Helpline",
+                "1091"
+            ],
+            [
+                "Emergency",
+                "112"
+            ],
+            [
+                "Ambulance",
+                "108"
+            ],
+            [
+                "Child Helpline",
+                "1098"
+            ]
+        ]
 
-# ==============================================
-# EMERGENCY HISTORY
-# ==============================================
-
-elif user_menu == "Emergency History":
-
-    st.title("📋 Emergency History")
-
-    cursor.execute("""
-    SELECT
-    location,
-    image_path,
-    alert_time
-
-    FROM sos_alerts
-
-    WHERE user_email=?
-
-    ORDER BY id DESC
-    """,
-    (
-        st.session_state.user_email,
-    ))
-
-    alerts = cursor.fetchall()
-
-    if alerts:
-
-        for alert in alerts:
-
-            st.write("---")
-
-            st.write(
-                f"Location: {alert[0]}"
-            )
-
-            st.write(
-                f"Time: {alert[2]}"
-            )
-
-            if alert[1]:
-
-                try:
-
-                    st.image(
-                        alert[1],
-                        width=300
-                    )
-
-                except:
-                    pass
-
-    else:
-
-        st.info(
-            "No Alerts Found"
-        )
-
-# ==============================================
-# FAMILY ALERT STATUS
-# ==============================================
-
-elif user_menu == "Family Alerts":
-
-    st.title("👨‍👩‍👧 Family Alert Records")
-
-    cursor.execute("""
-    SELECT
-    family_name,
-    family_phone,
-    alert_time,
-    status
-
-    FROM family_alerts
-
-    WHERE user_email=?
-
-    ORDER BY id DESC
-    """,
-    (
-        st.session_state.user_email,
-    ))
-
-    alerts = cursor.fetchall()
-
-    if alerts:
-
-        df = pd.DataFrame(
-            alerts,
+        help_df = pd.DataFrame(
+            help_data,
             columns=[
-                "Family Member",
-                "Phone",
-                "Time",
-                "Status"
+                "Service",
+                "Number"
             ]
         )
 
-        st.dataframe(df)
-
-    else:
-
-        st.info(
-            "No Alerts Found"
+        st.dataframe(
+            help_df,
+            use_container_width=True
         )
 
-# ==============================================
-# NEARBY HELP
-# ==============================================
-
-elif user_menu == "Nearby Help":
-
-    st.title("🏥 Nearby Help Centers")
-
-    st.success(
-        "Emergency Support Directory"
-    )
-
-    help_data = [
-        [
-            "Police Station",
-            "100"
-        ],
-        [
-            "Women Helpline",
-            "1091"
-        ],
-        [
-            "Emergency",
-            "112"
-        ],
-        [
-            "Ambulance",
-            "108"
-        ],
-        [
-            "Child Helpline",
-            "1098"
-        ]
-    ]
-
-    help_df = pd.DataFrame(
-        help_data,
-        columns=[
-            "Service",
-            "Number"
-        ]
-    )
-
-    st.dataframe(
-        help_df,
-        use_container_width=True
-    )
-
-    st.info(
-        "Future Version: GPS Based Nearby Hospitals, Medical Stores and Police Stations."
-    )
+        st.info(
+            "Future Version: GPS Based Nearby Hospitals, Medical Stores and Police Stations."
+        )
