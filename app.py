@@ -1013,10 +1013,9 @@ if st.session_state.logged_in:
             st.success(
                 "Route Saved"
             )
-
-    # ==============================================
-    # FIND COMPANION
-    # ==============================================
+# ==============================================D
+    # FIND COMPANIOND
+    # ==============================================D
 
     elif user_menu == "Find Companion":
 
@@ -1026,13 +1025,17 @@ if st.session_state.logged_in:
             "City"
         )
 
-        source_search = st.text_input(
-            "Source"
-        )
+        # Removed source_search and destination_search as they were not being used in the SQL query.
+        # source_search = st.text_input(
+        #     "Source"
+        # )
 
-        destination_search = st.text_input(
-            "Destination"
-        )
+        # destination_search = st.text_input(
+        #     "Destination"
+        # )
+
+        if "companion_results" not in st.session_state:
+            st.session_state.companion_results = []
 
         if st.button(
             "Search Companion"
@@ -1062,74 +1065,88 @@ if st.session_state.logged_in:
                 st.session_state.user_email
             ))
 
-            results = cursor.fetchall()
+            st.session_state.companion_results = cursor.fetchall()
 
-            if len(results) == 0:
+        results = st.session_state.companion_results
 
-                st.warning(
-                    "No companion found"
+        if results:
+
+            for row in results:
+
+                email = row[0]
+                name = row[1]
+
+                st.write("---")
+
+                st.write(
+                    f"### {name}"
                 )
 
-            else:
+                st.write(
+                    f"Email: {email}"
+                )
 
-                for row in results:
+                st.write(
+                    f"Source: {row[2]}"
+                )
 
-                    email = row[0]
-                    name = row[1]
+                st.write(
+                    f"Destination: {row[3]}"
+                )
 
-                    st.write("---")
+                st.write(
+                    f"Time: {row[4]}"
+                )
 
-                    st.write(
-                        f"### {name}"
+                if st.button(
+                    f"Send Request {email}",
+                    key=f"req_{email}"
+                ):
+
+                    cursor.execute("""
+                    INSERT INTO requests(
+                    sender_email,
+                    receiver_email,
+                    status
+                    )
+                    VALUES(?,?,?)
+                    """,
+                    (
+                        st.session_state.user_email,
+                        email,
+                        "Pending"
+                    ))
+
+                    conn.commit()
+
+                    st.success(
+                        "Request Sent Successfully"
                     )
 
-                    st.write(
-                        f"Email: {email}"
-                    )
+                    st.rerun()
 
-                    st.write(
-                        f"Source: {row[2]}"
-                    )
+        else:
+            st.info("Search for companions")
 
-                    st.write(
-                        f"Destination: {row[3]}"
-                    )
-
-                    st.write(
-                        f"Time: {row[4]}"
-                    )
-
-                    if st.button(
-                        f"Send Request {email}"
-                    ):
-
-                        cursor.execute("""
-                        INSERT INTO requests(
-                        sender_email,
-                        receiver_email,
-                        status
-                        )
-                        VALUES(?,?,?)
-                        """,
-                        (
-                            st.session_state.user_email,
-                            email,
-                            "Pending"
-                        ))
-
-                        conn.commit()
-
-                        st.success(
-                            "Request Sent"
-                        )
-
-    # ==============================================
-    # REQUESTS
-    # ==============================================
+    # ==============================================D
+    # REQUESTSD
+    # ==============================================D
 
     elif user_menu == "Requests":
 
         st.title("📨 Companion Requests")
+
+        # --- Temporary: Display all requests for debugging ---
+        st.subheader("All Requests (for Searching similar)")
+        cursor.execute("SELECT * FROM requests")
+        all_requests = cursor.fetchall()
+        if all_requests:
+            df_all = pd.DataFrame(all_requests, columns=["ID", "Sender", "Receiver", "Status"])
+            st.dataframe(df_all, use_container_width=True)
+        else:
+            st.info("No requests found in the database.")
+        st.write("---")
+        # ---------------------------------------------------
 
         st.subheader(
             "Incoming Requests"
@@ -1176,7 +1193,7 @@ if st.session_state.logged_in:
                 with col1:
 
                     if st.button(
-                        f"Accept {request_id}"
+                        f"Accept {request_id}", key=f"accept_req_{request_id}"
                     ):
 
                         cursor.execute("""
@@ -1192,11 +1209,12 @@ if st.session_state.logged_in:
                         st.success(
                             "Request Accepted"
                         )
+                        st.rerun() # Added rerun
 
                 with col2:
 
                     if st.button(
-                        f"Reject {request_id}"
+                        f"Reject {request_id}", key=f"reject_req_{request_id}"
                     ):
 
                         cursor.execute("""
@@ -1212,6 +1230,7 @@ if st.session_state.logged_in:
                         st.error(
                             "Request Rejected"
                         )
+                        st.rerun() # Added rerun
 
         else:
 
@@ -1244,7 +1263,8 @@ if st.session_state.logged_in:
 
             df = pd.DataFrame(
                 sent,
-                columns=[
+                columns=
+                    [
                     "Receiver",
                     "Status"
                 ]
